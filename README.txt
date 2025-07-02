@@ -14,7 +14,10 @@ Changelog :
   - Add the preset "Bedrock MERS to labPBR 1.3"
   - Add a feature to replace one keyword to another in converted files
   - Now checkboxes will be automatically disabled when they do not work
-  - Colors of controls are now determined by class variables (the palette) instead of being assigned for each control
+  - Colors of controls are now determined by class variables (the palette), instead of being assigned for each control
+    - Now it uses the same palette as Ore UI! 
+  - An info box will be displayed when it's converted successfully, instead of a warning box
+  - Set the default windows size
 0.4 (10/11/2020)
   - fixed a bug where it would not detect file outside of propage mode
   - checked options so that by default it's setup to convert a whole mc ressource pack
