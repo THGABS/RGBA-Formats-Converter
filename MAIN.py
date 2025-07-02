@@ -2,27 +2,25 @@ import tkinter as tk
 import os
 from PIL import Image, ImageTk
 from math import *
-from tkinter import messagebox
-from tkinter import filedialog
-
-#C:\Users\flodri\Desktop\RGBA-Formats-Converter-master\testA.png
+from tkinter import messagebox, filedialog
 
 # Notes :
 # and here we get a callback when the user hits return.
 #self.entry_source.bind('<Key-Return>',
 #                      self.print_source_path)
 
-preset_to_config = {'old seus to labPBR 1.3':'R = 255*round(sqrt(r/255)) # convert to perceptual smoothness\nG = round(g*0.8980392156862745) # 0-229 range\nB = 0\nA = 255',
-                    'old continuum to labPBR 1.3':'R = b\nG = round(g*0.8980392156862745) # 0-229 range\nB = 0\nA = a',
-                    'pbr+emissive (old BSL) to labPBR 1.3':'R = 255*round(sqrt(r/255)) # convert to perceptual smoothness\nG = round(g*0.8980392156862745) # 0-229 range\nB = 0\nA = b-1 # 1-255 to 0-254 range and 0 become 255 with underflow',
-                    "gray to labPBR 1.3 (you probably won't get good results)":'#magic number are 1-x of the one in ITU-R 601-2 (L=R*299/1000+G*587/1000+B*114/1000)\nR = int(r*0.701)\nG = int(g*0.3708901960784314) # 0.3708901960784314 = 0.413*0.8980392156862745\nB = 0\nA = 255',
-                    'Custom preset':'R = r\nG = g\nB = b\nA = a'}
+preset_to_config = {'Bedrock MERS to labPBR 1.3':'R = round((1.0-sqrt(b/255))*255)\nG = round((r/255)*225+4)\nB = round((a/255)*190+65)\nA = min(g,254) if g!=0 else 0',
+                    'Old SEUS to labPBR 1.3':'R = 255*round(sqrt(r/255)) # convert to perceptual smoothness\nG = round(g*0.8980392156862745) # 0-229 range\nB = 0\nA = 255',
+                    'Old Continuum to labPBR 1.3':'R = b\nG = round(g*0.8980392156862745) # 0-229 range\nB = 0\nA = a',
+                    'PBR + Emissive (old BSL) to labPBR 1.3':'R = 255*round(sqrt(r/255)) # convert to perceptual smoothness\nG = round(g*0.8980392156862745) # 0-229 range\nB = 0\nA = b-1 # 1-255 to 0-254 range and 0 become 255 with underflow',
+                    "Gray to labPBR 1.3 (you probably won't get good results)":'#magic number are 1-x of the one in ITU-R 601-2 (L=R*299/1000+G*587/1000+B*114/1000)\nR = int(r*0.701)\nG = int(g*0.3708901960784314) # 0.3708901960784314 = 0.413*0.8980392156862745\nB = 0\nA = 255',
+                    'Custom...':'R = r\nG = g\nB = b\nA = a'}
 
 def try_to_open(source_path):
     try: return Image.open(source_path)
     except: return None
 
-def add_imgs_with_propagation(source_path,to_convert_list,filter_on):
+def add_imgs_with_propagation(source_path,to_convert_list,filter_on,filter_used):
     for file_name in os.listdir(source_path):
         file_path = os.path.join(source_path, file_name)
         if os.path.isfile(file_path):
@@ -33,27 +31,39 @@ def add_imgs_with_propagation(source_path,to_convert_list,filter_on):
             else:
                 tried = try_to_open(file_path)
                 if tried is not None: to_convert_list.append((tried, file_path))
-        else: add_imgs_with_propagation(file_path,to_convert_list,filter_on)
+        else: add_imgs_with_propagation(file_path,to_convert_list,filter_on,filter_used)
 
 class Application(tk.Frame):
+    # Color Palette
+    bg_color_header = '#222324'
+    bg_color_body = '#313233'
+    bg_color_button = '#48494a'
+    text_color = '#FFFFFF'
+    text_color_button = '#FFFFFF'
+    text_color_entry = '#FFFFFF'
+    insert_color_entry = text_color_entry
+    text_color_checkbox = '#000000'
+    bg_color_checkbox = '#FFFFFF'
+    bg_color_button_alt = '#d0d1d4'
+    text_color_button_alt = '#1e1e1f'
+
     def __init__(self, master=None):
         #super().__init__(master)
         tk.Frame.__init__(self, master=None,
-                          bg = '#202225')
+                          bg = self.bg_color_header)
         self.master = master
         self.pack(fill = tk.BOTH,
                   expand=True)
         self.create_widgets()
  
     def create_widgets(self):
-        
         ### Convert button :
-        self.convert_button_frame = tk.Frame(bg = '#202225')
+        self.convert_button_frame = tk.Frame(bg = self.bg_color_header)
         self.convert_button_frame.pack(fill = tk.BOTH,
                                        expand=True)
         
         self.convert_button = tk.Button(self.convert_button_frame,
-                                        fg = 'black',
+                                        fg = 'white',
                                         bg = 'green')
         self.convert_button["text"] = "CONVERT"
         self.convert_button["command"] = self.convert_img
@@ -62,7 +72,7 @@ class Application(tk.Frame):
 
         ### Source and cible path :
         # source :
-        self.source_frame = tk.Frame(bg = '#202225')
+        self.source_frame = tk.Frame(bg = self.bg_color_header)
         
         self.source_frame.pack(fill = tk.BOTH, expand=True)
         self.entry_source = tk.Entry(master = self.source_frame)
@@ -72,13 +82,13 @@ class Application(tk.Frame):
         self.entry_source["textvariable"] = self.source_path
         
         self.source_button = tk.Button(self.source_frame,
-                                       bg = '#40444B',
-                                       fg = '#FFFFFF')
+                                       bg = self.bg_color_button,
+                                       fg = self.text_color_button)
         self.source_button["text"] = "..."
         self.source_button["command"] = self.open_source_dir_windows
 
         # cible/output :
-        self.cible_frame = tk.Frame(bg = '#202225')
+        self.cible_frame = tk.Frame(bg = self.bg_color_header)
         self.cible_frame.pack(fill = tk.BOTH, expand=True)
         
         self.entry_output = tk.Entry(master = self.cible_frame)
@@ -89,23 +99,24 @@ class Application(tk.Frame):
         self.entry_output["textvariable"] = self.output_path
         
         self.cible_button = tk.Button(self.cible_frame,
-                                      bg = '#40444B',
-                                      fg = '#FFFFFF')
+                                      bg = self.bg_color_button,
+                                      fg = self.text_color_button)
         self.cible_button["text"] = "..."
         self.cible_button["command"] = self.open_cible_dir_windows
         
-        #packing :
+        # Packing :
         for widget in (self.entry_source, self.entry_output):
-            widget.configure(bg = '#40444B',
-                             fg = '#FFFFFF',
-                             insertbackground = '#FFFFFF')
+            widget.configure(bg = self.bg_color_button,
+                             fg = self.text_color_entry,
+                             insertbackground = self.insert_color_entry)
             widget.pack(padx=10, pady=10, fill = tk.X, side = "left", expand=True)
 
         for widget in (self.source_button, self.cible_button):  widget.pack(padx=5, side = "left")
         
 
-        ### checkboxes :
-        self.filter_frame = tk.Frame(bg = '#2F3136')
+        # Checkboxes:
+        ## Filter
+        self.filter_frame = tk.Frame(bg = self.bg_color_body)
         self.filter_frame.pack(fill = tk.X)
         
         self.filter_on = tk.BooleanVar()
@@ -113,30 +124,56 @@ class Application(tk.Frame):
                                            variable = self.filter_on,
                                            onvalue = True,
                                            offvalue = False,
-                                           bg = '#2F3136',
-                                           fg = '#000000',
-                                           activebackground = '#2F3136',
-                                           activeforeground = '#000000')
+                                           bg = self.bg_color_body,
+                                           fg = self.text_color_checkbox,
+                                           activebackground = self.bg_color_body,
+                                           activeforeground = self.text_color_checkbox,
+                                           selectcolor=self.bg_color_checkbox)
 
-        self.filter_start_label = tk.Label(master = self.filter_frame,
-                                           text = 'only convert image with ',
-                                           bg = '#2F3136',
-                                           fg = '#FFFFFF')
+        self.filter_label = tk.Label(master = self.filter_frame,
+                                           text = 'Only convert image with keyword ',
+                                           bg = self.bg_color_body,
+                                           fg = self.text_color)
 
         self.filter_entry = tk.Entry(master = self.filter_frame,
-                                     bg = '#40444B',
-                                     fg = '#FFFFFF',
-                                     insertbackground = '#FFFFFF')
+                                     bg = self.bg_color_button,
+                                     fg = self.text_color_entry,
+                                     insertbackground = self.insert_color_entry)
         self.filter_used = tk.StringVar()
-        self.filter_used.set("_s.")
+        self.filter_used.set("_mers.tga")
         self.filter_entry["textvariable"] = self.filter_used
 
-        self.filter_end_label = tk.Label(master = self.filter_frame,
-                                         text = ' in their name.',
-                                         bg = '#2F3136',
-                                         fg = '#FFFFFF')
+        self.replace_frame = tk.Frame(bg = self.bg_color_body)
+        self.replace_frame.pack(fill = tk.X)
+
+        # Replace
+        self.replace_on = tk.BooleanVar()
+        self.replace_check = tk.Checkbutton(self.replace_frame,
+                                           variable = self.replace_on,
+                                           onvalue = True,
+                                           offvalue = False,
+                                           state = 'normal' if self.filter_on.get() else 'disabled',
+                                           bg = self.bg_color_body,
+                                           fg = self.text_color_checkbox,
+                                           activebackground = self.bg_color_body,
+                                           activeforeground = self.text_color_checkbox,
+                                           selectcolor=self.bg_color_checkbox)
+
+        self.replace_start_label = tk.Label(self.replace_frame,
+                                           text = 'Replace the key word with ',
+                                           bg = self.bg_color_body,
+                                           fg = self.text_color)
+
+        self.replace_entry = tk.Entry(self.replace_frame,
+                                     bg = self.bg_color_button,
+                                     fg = self.text_color_entry,
+                                     insertbackground = self.insert_color_entry)
+        self.replace_used = tk.StringVar()
+        self.replace_used.set("_s.png")
+        self.replace_entry["textvariable"] = self.replace_used
         
-        self.overwrite_frame = tk.Frame(bg = '#2F3136')
+        # Overwrite
+        self.overwrite_frame = tk.Frame(bg = self.bg_color_body)
         self.overwrite_frame.pack(fill = tk.X)
         
         self.overwrite_on = tk.BooleanVar()
@@ -144,17 +181,19 @@ class Application(tk.Frame):
                                               variable = self.overwrite_on,
                                               onvalue = True,
                                               offvalue = False,
-                                              bg = '#2F3136',
-                                              fg = '#000000',
-                                              activebackground = '#2F3136',
-                                              activeforeground = '#000000')
+                                              bg = self.bg_color_body,
+                                              fg = self.text_color_checkbox,
+                                              activebackground = self.bg_color_body,
+                                              activeforeground = self.text_color_checkbox,
+                                              selectcolor=self.bg_color_checkbox)
 
         self.overwrite_label = tk.Label(master = self.overwrite_frame,
-                                        text = 'overwrite original instead of outputing to output path',
-                                        bg = '#2F3136',
-                                        fg = '#FFFFFF')
+                                        text = 'Overwrite original instead of outputing to output path',
+                                        bg = self.bg_color_body,
+                                        fg = self.text_color)
         
-        self.propagate_frame = tk.Frame(bg = '#2F3136')
+        # Propagate
+        self.propagate_frame = tk.Frame(bg = self.bg_color_body)
         self.propagate_frame.pack(fill = tk.X)
         
         self.propagate_on = tk.BooleanVar()
@@ -162,42 +201,48 @@ class Application(tk.Frame):
                                               variable = self.propagate_on,
                                               onvalue = True,
                                               offvalue = False,
-                                              bg = '#2F3136',
-                                              fg = '#000000',
-                                              activebackground = '#2F3136',
-                                              activeforeground = '#000000')
-
+                                              state = 'normal' if self.overwrite_on.get() else 'disabled',
+                                              bg = self.bg_color_body,
+                                              fg = self.text_color_checkbox,
+                                              activebackground = self.bg_color_body,
+                                              activeforeground = self.text_color_checkbox,
+                                              selectcolor=self.bg_color_checkbox)
         self.propagate_label = tk.Label(master = self.propagate_frame,
-                                        text = 'propagate the conversion to sub-folder (work only in overwrite mode)',
-                                        bg = '#2F3136',
-                                        fg = '#FFFFFF')
+                                        text = 'Propagate the conversion to sub-folder (work only in overwrite mode)',
+                                        bg = self.bg_color_body,
+                                        fg = self.text_color)
 
-        for widget in (self.filter_check, self.filter_start_label, self.filter_entry, self.filter_end_label, self.overwrite_check, self.overwrite_label, self.propagate_check, self.propagate_label):
-            widget.pack(side = "left")
+        for frm in (self.filter_frame, self.replace_frame, self.overwrite_frame, self.propagate_frame):
+            for widget in frm.winfo_children():
+                widget.pack(side = "left")
+
+        # Update control states
+        self.filter_on.trace_add('write', self.update_control_state(self.filter_on, self.replace_check))
+        self.replace_on.trace_add('write', self.update_control_state(self.replace_on, self.replace_entry))
+        self.overwrite_on.trace_add('write', self.update_control_state(self.overwrite_on, self.propagate_check))
 
         self.filter_check.select()
-        self.overwrite_check.select()
-        self.propagate_check.select()
-
+        # self.overwrite_check.select()
+        # self.propagate_check.select()
 
         ### See preview button :
-        self.preview_button_frame = tk.Frame(bg = '#2F3136')
+        self.preview_button_frame = tk.Frame(bg = self.bg_color_body)
         self.preview_button_frame.pack(fill = tk.BOTH,
                                        expand = True)
         
-        self.preview = tk.Button(self.preview_button_frame, fg = 'black', bg = 'white')
+        self.preview = tk.Button(self.preview_button_frame, fg = self.text_color_button_alt, bg = self.bg_color_button_alt)
         self.preview["text"] = "See preview"
         self.preview["command"] = self.display_preview
         self.preview.pack(padx=10, pady=10)
 
 
         ### preview :
-        self.preview_frame_frame = tk.Frame(bg = '#2F3136')
+        self.preview_frame_frame = tk.Frame(bg = self.bg_color_body)
         self.preview_frame_frame.pack(fill = tk.BOTH,
                                       expand = True)
         
         self.preview_frame = tk.Frame(self.preview_frame_frame,
-                                      bg = '#2F3136')
+                                      bg = self.bg_color_body)
         self.preview_frame.pack()
         
         self.old_img_canvas = tk.Canvas(self.preview_frame,
@@ -219,7 +264,7 @@ class Application(tk.Frame):
         
 
         ### Preset selection :
-        self.preset_frame = tk.Frame(bg = '#2F3136')
+        self.preset_frame = tk.Frame(bg = self.bg_color_body)
         self.preset_frame.pack(fill = tk.X)
         
         self.preset_list = list(preset_to_config)
@@ -229,33 +274,36 @@ class Application(tk.Frame):
         self.preset_list_menu = tk.OptionMenu(self.preset_frame,
                                               self.selected_preset,
                                               *self.preset_list)
-        self.preset_list_menu.configure(bd = 0)
+        self.preset_list_menu.configure(bd=0, bg=self.bg_color_button_alt, fg=self.text_color_button_alt)
 
         self.preset_list_menu.pack(padx=10, pady=10)
         
 
         ### Config :        
         self.config = tk.Label(text = 'Config :',
-                               bg = '#2F3136',
-                               fg = '#FFFFFF')
+                               bg = self.bg_color_body,
+                               fg = self.text_color)
         self.config.pack(fill = tk.BOTH,
                          expand = True)
 
         
-        self.config_box_frame = tk.Frame(bg = '#2F3136')
+        self.config_box_frame = tk.Frame(bg = self.bg_color_body)
         self.config_box_frame.pack(fill = tk.BOTH,
                                    expand = True)
         self.config_box = tk.Text(self.config_box_frame,
-                                  bg = '#40444B',
-                                  fg = '#FFFFFF',
-                                  insertbackground = '#FFFFFF')
+                                  bg = self.bg_color_button,
+                                  fg = self.text_color_entry,
+                                  insertbackground = self.insert_color_entry)
         # to use to get the value : config_box.get("1.0", tk.END)
         self.config_box.pack(side = 'bottom')
 
-
-        ### c'est chiant, mais pas vraiment le choix de le mettre là...
+        # It's annoying, but there's not really any choice but to put it there...
         self.selected_preset.set(self.preset_list[0])
-        
+
+    def update_control_state(self, variable, control, *args):
+        # Somehow it must return a lambda only with no function body, or this function won't work
+        return lambda *args: control.config(state='normal' if variable.get() else 'readonly' if isinstance(control, tk.Entry) else 'disabled')
+
     def display_config_text(self, *args):
         self.config_box.delete("1.0", tk.END)
         self.config_box.insert("1.0", preset_to_config[self.selected_preset.get()])
@@ -316,7 +364,9 @@ class Application(tk.Frame):
         to_convert_list = []
         source_path  = self.source_path.get()
         filter_on    = self.filter_on.get()
+        replace_on = self.replace_on.get()
         filter_used  = self.filter_used.get()
+        replace_with  = self.replace_used.get()
         propagate_on = self.propagate_on.get()
         overwrite_on = self.overwrite_on.get()
         
@@ -330,7 +380,7 @@ class Application(tk.Frame):
 
         elif os.path.isdir(source_path):
             if overwrite_on and propagate_on:
-                add_imgs_with_propagation(source_path, to_convert_list, filter_on)
+                add_imgs_with_propagation(source_path, to_convert_list, filter_on, filter_used)
             else:
                 for file_name in os.listdir(source_path):
                     if os.path.isfile(os.path.join(source_path, file_name)):
@@ -369,6 +419,7 @@ class Application(tk.Frame):
             self.old_img_canvas.create_image(65, 65, image = self.old_tkv)
             self.new_tkv = ImageTk.PhotoImage(new)
             self.new_img_canvas.create_image(65, 65, image = self.new_tkv)
+            print('Preview created.')
         else:
             output_path = self.output_path.get()
             for to_convert in to_convert_list:
@@ -378,13 +429,15 @@ class Application(tk.Frame):
                     messagebox.showwarning('Config caused crash during conversion.', 'The current config have a valid syntax but must have some problems (most likely a 0div) as it caused a crash during conversion.')
                     return None
                 #save part :
+                if filter_on:
+                    if replace_on: to_convert[1] = to_convert[1].replace(filter_used, replace_with)
                 if overwrite_on:
                     if propagate_on: img.save(to_convert[1])
                     else: img.save(os.path.join(source_path, to_convert[1]))
-                else: img.save(os.path.join(output_path, to_convert[1]))
+                else: img.save(os.path.join(output_path, to_convert[1].replace('tga','png')))
         
         print("Done.")
-        messagebox.showwarning('Conversion complete.', 'Done.\nNo errors where encoutered during the conversion.')
+        messagebox.showinfo('Conversion complete.', 'Done.\nNo errors where encoutered during the conversion.')
 
     def display_preview(self):
         """ convert one image with current preset, don't save it and display it """
@@ -398,4 +451,5 @@ root = tk.Tk()
 app = Application(master=root)
 
 app.master.title("RGBA Formats Converter")
+root.geometry("640x720+128+64")
 app.mainloop()
